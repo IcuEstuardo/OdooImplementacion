@@ -1,0 +1,72 @@
+version: '3'
+
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - certs:/etc/nginx/certs:ro
+      - vhostd:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy
+
+  letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    restart: always
+    environment:
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+    volumes:
+      - certs:/etc/nginx/certs:rw
+      - vhostd:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  nginx:
+    image: nginx
+    restart: always
+    expose:
+      - "80"
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    environment:
+      - VIRTUAL_HOST=sakal-gt.tk,www.sakal-gt.tk
+      - LETSENCRYPT_HOST=sakal-gt.tk,www.sakal-gt.tk
+      - LETSENCRYPT_EMAIL=admin@sakal-gt.tk
+    depends_on:
+      - nginx-proxy
+      - letsencrypt
+
+  web:
+    image: odoo:14.0
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo-web-data:/var/lib/odoo
+      - ./config:/etc/odoo
+      - ./addons:/mnt/extra-addons
+
+  db:
+    image: postgres:13
+    restart: always
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_USER=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data/pgdata
+
+volumes:
+  certs:
+  html:
+  vhostd:
+  odoo-web-data:
+  odoo-db-data:
