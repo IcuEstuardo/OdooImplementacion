@@ -2,3 +2,4 @@
 
 ## Implementación del ERP Odoo
 
+## Primeros pasos
